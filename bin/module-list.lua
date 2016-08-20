@@ -4,7 +4,7 @@ return function (connection, req, args)
   connection:send('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>WiFi info</title></head><body>')
 
   local modulelist = {};
-  modulelist[ "core"      ] = { "test" : core      ~= nil , "docurl" : "http://www.lua.org/manual/5.1/manual.html" };
+  modulelist[ "core"      ] = { "test" : true             , "docurl" : "http://www.lua.org/manual/5.1/manual.html" };
   modulelist[ "coroutine" ] = { "test" : coroutine ~= nil , "docurl" : "http://www.lua.org/manual/5.1/manual.html#5.2" };
   modulelist[ "string"    ] = { "test" : string    ~= nil , "docurl" : "http://www.lua.org/manual/5.1/manual.html#5.4" };
   modulelist[ "table"     ] = { "test" : table     ~= nil , "docurl" : "http://www.lua.org/manual/5.1/manual.html#5.5" };
