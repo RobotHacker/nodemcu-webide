@@ -1,7 +1,7 @@
 return function (connection, req, args)
   dofile('httpserver-header.lc')(connection, 200, 'html')
 
-  connection:send('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>WiFi info</title></head><body>')
+  connection:send('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>System Info</title></head><body>')
 
   connection:send('<p><b>Chip ID:</b> '..node.chipid()..'</p>')
   connection:send('<p><b>Flash ID:</b> '..node.flashid()..'</p>')
@@ -14,9 +14,14 @@ return function (connection, req, args)
   connection:send('<p><b>File System Address:</b> '..address..'</p>')
   connection:send('<p><b>File System Size:</b> '..size..' bytes</p>')
 
+  local tm = rtctime.epoch2cal(rtctime.get())
+  connection:send('<p><b>RTC Time:</b> '..string.format("%04d/%02d/%02d %02d:%02d:%02d", tm["year"], tm["mon"], tm["day"], tm["hour"], tm["min"], tm["sec"])..'</p>')
+
   local remaining, used, total = file.fsinfo()
   connection:send('<p><b>File System Usage:</b> '..used..' / '..total..' bytes</p>')
-  connection:send('<p><b>Wifi MAC Address:</b> '..wifi.sta.getmac()..'</p>')
+
+  connection:send('<p><b>Wifi STA MAC Address:</b> '..wifi.sta.getmac()..'</p>')
+  connection:send('<p><b>Wifi AP MAC Address:</b> '..wifi.ap.getmac()..'</p>')
 
   connection:send('<p><b>WiFi Channel:</b> '..wifi.getchannel()..'</p>')
 
@@ -31,6 +36,20 @@ return function (connection, req, args)
     connection:send('<p><b>WiFi Mode:</b> NULLMODE</p>')
   end
 
+  if (wifimode == wifi.STATIONAP) or (wifimode == wifi.SOFTAP) then
+    local ip, netmask, gateway = wifi.ap.getip()
+    connection:send('<p><b>AP IP:</b> '..ip..'</p>')
+    connection:send('<p><b>AP netmask:</b> '..netmask..'</p>')
+    connection:send('<p><b>AP gateway:</b> '..gateway..'</p>')
+
+    connection:send('<p><b>AP client list:</b> ')
+    local clients = wifi.ap.getclient()
+    for mac, ip in pairs(clients) do
+      connection:send('<p><b>'..mac..':</b> '..ip..'</p>')
+    end
+    connection:send('</p>')
+  end
+
   local wifiphymode = wifi.getphymode()
   if wifiphymode == wifi.PHYMODE_B then
     connection:send('<p><b>WiFi Physical Mode:</b> B</p>')
@@ -41,19 +60,32 @@ return function (connection, req, args)
   end
 
   local status = wifi.sta.status()
-  if status == 0 then
+  if status == wifi.STA_IDLE then
     connection:send('<p><b>wifi.sta.status:</b> STA_IDLE</p>')
-  elseif status == 1 then
+  elseif status == wifi.STA_CONNECTING then
     connection:send('<p><b>wifi.sta.status:</b> STA_CONNECTING</p>')
-  elseif status == 2 then
+  elseif status == wifi.STA_WRONGPWD then
     connection:send('<p><b>wifi.sta.status:</b> STA_WRONGPWD</p>')
-  elseif status == 3 then
+  elseif status == wifi.STA_APNOTFOUND then
     connection:send('<p><b>wifi.sta.status:</b> STA_APNOTFOUND</p>')
-  elseif status == 4 then
+  elseif status == wifi.STA_FAIL then
     connection:send('<p><b>wifi.sta.status:</b> STA_FAIL</p>')
-  elseif status == 5 then
+  elseif status == wifi.STA_GOTIP then
     connection:send('<p><b>wifi.sta.status:</b> STA_GOTIP</p>')
-    connection:send('<p><b>IP:</b> '..wifi.sta.getip())
+    connection:send('<p><b>Hostname:</b> '..wifi.sta.gethostname()..'</p>')
+
+    local ip, netmask, gateway = wifi.sta.getip()
+    connection:send('<p><b>STA IP:</b> '..ip..'</p>')
+    connection:send('<p><b>STA netmask:</b> '..netmask..'</p>')
+    connection:send('<p><b>STA gateway:</b> '..gateway..'</p>')
+
+    local ssid, password, bssid_set, bssid = wifi.sta.getconfig()
+    connection:send('<p><b>SSID:</b> '..ssid..'</p>')
+    -- connection:send('<p><b>password:</b> '..password..'</p>') -- not sure if it should be shown.
+    connection:send('<p><b>BSSID set:</b> '..bssid_set..'</p>')
+    connection:send('<p><b>BSSID:</b> '..bssid..'</p>')
+
+    connection:send('<p><b>STA Broadcast IP:</b> '..wifi.sta.getbroadcast()..'</p>')
     connection:send('<p><b>RSSI:</b> '..wifi.sta.getrssi()..' dB</p>')
   end
   connection:send('</body></html>')

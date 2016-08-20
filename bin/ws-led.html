@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=0.67">
-<title>LED Matrix</title>
+<title>WebSocket LED Matrix</title>
 <style>
 #colorPicker {
    padding: 4px;
@@ -45,7 +45,7 @@
 </style>
 </head>
 <body>
-<h1>LED Matrix</h1>
+<h1>WebSocket LED Matrix</h1>
 <div class="Table">
 <div class="Row">
 <div class="Cell">
@@ -65,7 +65,9 @@ var w = 10;
 var h = 6;
 var colorMin = 3;
 var colorMax = 15;
-var xhr;
+var wsUri = "ws://" + location.hostname + "/ws-led.lc";
+var websocket;
+var wsReady = false;
 
 function getRGB(e) {
    return window.getComputedStyle(e).backgroundColor.match(/\d+/g).map(function(a){ return Math.round(parseInt(a, 10) / 16.5); });
@@ -84,8 +86,15 @@ function setColor(e) {
    sendData(e);
 }
 
+function initWebSocket() {
+   websocket = new WebSocket(wsUri);
+   websocket.onopen = function(evt) { wsReady = true; };
+   websocket.onclose = function(evt) { websocket = null; wsReady = false; };
+   websocket.onmessage = function(evt) { var o = document.getElementById("dataOutput"); o.innerHTML = evt.data; };
+   websocket.onerror = function(evt) { var o = document.getElementById("dataOutput"); o.innerHTML = evt.data; websocket = null; wsReady = false; };
+}
+
 function sendData() {
-   var o = document.getElementById("dataOutput");
    var text = "";
    for (var i = 0; i < (h * w); i++) {
       var d = document.getElementById("dot_" + i);
@@ -94,56 +103,57 @@ function sendData() {
       text += String.fromCharCode(rgb[0] - colorMin);
       text += String.fromCharCode(rgb[2] - colorMin);
    }
-   text = "data=" + escape(text)
-   o.innerHTML = text;
-   if (!xhr) xhr = new XMLHttpRequest();
-   xhr.open("POST", "led-matrix.lc", true);
-   xhr.onreadystatechange=function() {
-      if (xhr.readyState === 4) {
-         var r = document.getElementById("txtResponse");
-         r.innerHTML = xhr.responseText;
-      }
+   if (!websocket) {
+      initWebSocket();
    }
-   xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-   xhr.send(text);
-}
-
-var cp = document.getElementById("colorPicker");
-var colorHtml = "";
-var i = 0;
-for (var r = colorMin; r <= colorMax; r+=6) {
-   for (var g = colorMin; g <= colorMax; g+=6) {
-      if ((g % 6) == 3) colorHtml += '<div calss="Row">';
-      for (var b = colorMin; b <= colorMax; b+=2) {
-         i++;
-         colorHtml += '<div class="Cell"><div class="Color" id="color' + i + '" style="background:#' + r.toString(16) + g.toString(16) + b.toString(16) + ';"></div></div>';
-      }
-      if ((g % 6) == 3) colorHtml += '</div>';
+   if (wsReady) {
+     websocket.send(text, { binary: true });
    }
 }
-cp.innerHTML = colorHtml;
-for (var j = 1; j <= i; j++) {
-   var c = document.getElementById("color" + j);
-   c.addEventListener("click", function(e) {
-      getColor(e.srcElement);
-   });
+
+function initColorPicker() {
+  var cp = document.getElementById("colorPicker");
+  var colorHtml = "";
+  var i = 0;
+  for (var r = colorMin; r <= colorMax; r+=6) {
+    for (var g = colorMin; g <= colorMax; g+=6) {
+        if ((g % 6) == 3) colorHtml += '<div calss="Row">';
+        for (var b = colorMin; b <= colorMax; b+=2) {
+          i++;
+          colorHtml += '<div class="Cell"><div class="Color" id="color' + i + '" style="background:#' + r.toString(16) + g.toString(16) + b.toString(16) + ';"></div></div>';
+        }
+        if ((g % 6) == 3) colorHtml += '</div>';
+    }
+  }
+  cp.innerHTML = colorHtml;
+  for (var j = 1; j <= i; j++) {
+    var c = document.getElementById("color" + j);
+    c.addEventListener("click", function(e) {
+        getColor(e.srcElement);
+    });
+  }
 }
 
-var lm = document.getElementById("ledMatrix");
-var dotHtml = "";
-for (var i = 0; i < (h * w); i++) {
-   if ((i % w) == 0) dotHtml += '<div calss="Row">';
-   dotHtml += '<div class="Cell"><div class="Circle" id="dot_' + i + '"></div></div>';
-   if ((i % w) == (w - 1)) dotHtml += '</div>';
-}
-lm.innerHTML = dotHtml;
-for (var i = 0; i < (h * w); i++) {
-   var d = document.getElementById("dot_" + i);
-   d.addEventListener("click", function(e) {
-      setColor(e.srcElement);
-   });
+function initLedMatrix() {
+  var lm = document.getElementById("ledMatrix");
+  var dotHtml = "";
+  for (var i = 0; i < (h * w); i++) {
+    if ((i % w) == 0) dotHtml += '<div calss="Row">';
+    dotHtml += '<div class="Cell"><div class="Circle" id="dot_' + i + '"></div></div>';
+    if ((i % w) == (w - 1)) dotHtml += '</div>';
+  }
+  lm.innerHTML = dotHtml;
+  for (var i = 0; i < (h * w); i++) {
+    var d = document.getElementById("dot_" + i);
+    d.addEventListener("click", function(e) {
+        setColor(e.srcElement);
+    });
+  }
 }
 
+initWebSocket();
+initColorPicker();
+initLedMatrix();
 document.getElementById("btnSend").addEventListener("click", sendData);
 </script>
 </body>
